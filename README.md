@@ -5,7 +5,7 @@ Add the Elastic Helm charts repo:
 
 `helm repo update`
 
-install elasticsearch and logstash and kibana with customize values in new-values.yaml file
+install elasticsearch (SSL enable) and logstash and kibana with customize values in new-values.yaml file
 
 `kubectl create namespace elk`
 
