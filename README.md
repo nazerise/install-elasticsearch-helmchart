@@ -7,8 +7,12 @@ Add the Elastic Helm charts repo:
 
 install elasticsearch and logstash and kibana with customize values in new-values.yaml file
 
-`helm install elasticsearch elastic/elasticsearch --values elasticsearch/new-values.yaml`
+`kubectl create namespace elk`
 
-`helm install logstash elastic/logstash --values logstash/new-values.yaml`
+`helm install elasticsearch elastic/elasticsearch -n elk --values elasticsearch/new-values.yaml`
 
-`helm install kibana elastic/kibana --values kibana/new-values.yaml`
+`kubectl apply -f logstash/packetbeat-example.conf`
+
+`helm install logstash elastic/logstash -n elk --values logstash/new-values.yaml`
+
+`helm install kibana elastic/kibana -n elk --values kibana/new-values.yaml`
