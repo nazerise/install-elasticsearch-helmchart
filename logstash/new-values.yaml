@@ -1,0 +1,294 @@
+---
+replicas: 1
+
+# Allows you to add any config files in /usr/share/logstash/config/
+# such as logstash.yml and log4j2.properties
+#
+# Note that when overriding logstash.yml, `http.host: 0.0.0.0` should always be included
+# to make default probes work.
+#    output { stdout { } }
+
+# Allows you to add any pattern files in your custom pattern dir
+logstashPatternDir: "/usr/share/logstash/patterns/"
+
+# Allows you to load environment variables from kubernetes secret or config map
+extraEnvs:
+  - name: ELASTICSEARCH_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-master-credentials
+        key: password
+  - name: ELASTICSEARCH_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-master-credentials
+        key: username
+
+
+envFrom: 
+ - configMapRef:
+     name: beats-input.conf
+ - configMapRef:
+     name: packet-input.conf
+ - configMapRef:
+     name: proxy-input.conf
+ - configMapRef:
+     name: proxy-pack.conf
+ - secretRef:
+     name: elasticsearch-master-credentials
+
+
+extraVolumes:
+   - name: beats
+     configMap:
+        defaultMode: 0777
+        name: beats-input.conf
+        items:
+        - key: beats-input.conf
+          path: beats-input.conf
+          mode: 0777
+   - name: packet
+     configMap:
+        defaultMode: 0777
+        name: packet-input.conf
+        items:
+        - key: packet-input.conf
+          path: packet-input.conf
+          mode: 0777
+   - name: proxy
+     configMap:
+        defaultMode: 0777
+        name: proxy-input.conf
+   - name: proxypack
+     configMap:
+        defaultMode: 0777
+        name: proxy-pack.conf
+        items:
+        - key: proxy-pack.conf
+          path: proxy-pack.conf
+          mode: 0777
+   - name: elasticsearch-ca
+     secret:
+        secretName: elasticsearch-master-certs
+        items:
+        - key: ca.crt
+          path: ca.crt
+          mode: 0777
+   - name: ca-directory
+     emptyDir: {}
+
+extraVolumeMounts:
+   - name: beats
+     mountPath: /usr/share/logstash/extra/beats-input.conf
+     subPath: beats-input.conf
+     readOnly: false
+   - name: packet
+     mountPath: /usr/share/logstash/extra/packet-input.conf
+     subPath: packet-input.conf
+     readOnly: false
+        #   - name: proxy
+        #     mountPath: /usr/share/logstash/extra/proxy-input.conf
+        #     subPath: proxy-input.conf
+        #     readOnly: false
+   - name: proxypack
+     mountPath: /usr/share/logstash/extra/proxy-pack.conf
+     subPath: proxy-pack.conf
+     readOnly: false
+   - name: ca-directory
+     mountPath: /usr/share/logstash/certs
+   - name: elasticsearch-ca
+     mountPath: /usr/share/logstash/certs/ca.crt
+     subPath: ca.crt
+     readOnly: true
+
+logstashConfig:
+  logstash.yml: |
+          monitoring.elasticsearch.hosts: https://elasticsearch-master.elk:9200
+          http.host: 0.0.0.0
+          xpack.monitoring.elasticsearch.username: "${ELASTICSEARCH_USERNAME}"
+          xpack.monitoring.elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
+          xpack.monitoring.elasticsearch.ssl.certificate_authority: /usr/share/logstash/certs/ca.crt
+  pipelines.yml: |
+    - pipeline.id: extra
+      path.config: "/usr/share/logstash/extra/*.conf"
+
+image: "docker.elastic.co/logstash/logstash"
+imageTag: "8.1.0"
+imagePullPolicy: "IfNotPresent"
+
+logstashJavaOpts: "-Xmx512m -Xms512m"
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "700Mi"
+  limits:
+    cpu: "1000m"
+    memory: "700Mi"
+
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+
+podSecurityPolicy:
+  create: false
+  name: "logstash-policy"
+  spec:
+    privileged: false
+    fsGroup:
+      rule: RunAsAny
+    runAsUser:
+      rule: RunAsAny
+    seLinux:
+      rule: RunAsAny
+    supplementalGroups:
+      rule: RunAsAny
+    volumes:
+      - secret
+      - configMap
+      - persistentVolumeClaim
+
+persistence:
+  enabled: false
+
+# This is the PriorityClass settings as defined in
+# https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#priorityclass
+
+# By default this will make sure two pods don't end up on the same node
+# Changing this to a region would allow you to spread pods across regions
+antiAffinityTopologyKey: "kubernetes.io/hostname"
+
+# Hard means that by default pods will only be scheduled if there are enough nodes for them
+# and that they will never end up on the same node. Setting this to soft will do this "best effort"
+antiAffinity: "hard"
+
+# This is the node affinity settings as defined in
+# https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+
+# This is inter-pod affinity settings as defined in
+# https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+
+# The default is to deploy all pods serially. By setting this to parallel all pods are started at
+# the same time when bootstrapping the cluster
+podManagementPolicy: "Parallel"
+
+httpPort: 9600
+
+# Custom ports to add to logstash
+
+updateStrategy: RollingUpdate
+
+# This is the max unavailable setting for the pod disruption budget
+# The default value of 1 will make sure that kubernetes won't allow more than 1
+# of your pods to be unavailable during maintenance
+maxUnavailable: 1
+
+#podSecurityContext:
+#  fsGroup: 1000
+#  runAsUser: 1000
+#
+#securityContext:
+#  capabilities:
+#     drop:
+#     - ALL
+#  runAsNonRoot: true
+#  runAsUser: 1000
+
+# How long to wait for logstash to stop gracefully
+terminationGracePeriod: 120
+
+# Probes
+# Default probes are using `httpGet` which requires that `http.host: 0.0.0.0` is part of
+# `logstash.yml`. If needed probes can be disabled or overridden using the following syntaxes:
+#
+# disable livenessProbe
+# livenessProbe: null
+#
+# replace httpGet default readinessProbe by some exec probe
+# readinessProbe:
+#   httpGet: null
+#   exec:
+#     command:
+#       - curl
+#      - localhost:9600
+
+#livenessProbe:
+#  httpGet:
+#    path: /beats
+#    port: 5044
+#  initialDelaySeconds: 300
+#  periodSeconds: 10
+#  timeoutSeconds: 5
+#  failureThreshold: 3
+#  successThreshold: 1
+#
+#readinessProbe:
+#  httpGet:
+#    path: /proxybeat
+#    port: 5077
+#  initialDelaySeconds: 60
+#  periodSeconds: 10
+#  timeoutSeconds: 5
+#  failureThreshold: 3
+#  successThreshold: 3
+service:
+   type: ClusterIP
+   ports:
+     - name: beats
+       port: 5044
+       protocol: TCP
+       targetPort: 5044
+     - name: proxyinput
+       port: 5055
+       protocol: TCP
+       targetPort: 5055
+     - name: packet
+       port: 5066
+       protocol: TCP
+       targetPort: 5066
+     - name: proxybeats
+       port: 5077
+       protocol: TCP
+       targetPort: 5077
+service:
+   type: NodePort
+   ports:
+     - name: beats
+       port: 5044
+       protocol: TCP
+       targetPort: 5044
+     - name: proxyinput
+       port: 5055
+       protocol: TCP
+       targetPort: 5055
+     - name: packet
+       port: 5066
+       protocol: TCP
+       targetPort: 5066
+     - name: proxybeats
+       port: 5077
+       protocol: TCP
+       targetPort: 5077
+
+
+## Use an alternate scheduler.
+## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##
+ingress:
+  enabled: true
+  annotations:
+  className: "nginx"
+  pathtype: ImplementationSpecific
+  hosts:
+    - host: logstash.sshc.io
+      paths:
+        - path: /beats
+          servicePort: 5044
+        - path: /proxyinput
+          servicePort: 5055
+        - path: /packet
+          servicePort: 5066
+        - path: /proxybeat
+          servicePort: 5077
