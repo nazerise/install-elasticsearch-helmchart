@@ -26,6 +26,14 @@ extraEnvs:
 
 
 extraVolumes:
+   - name: packetbeat
+     configMap:
+        defaultMode: 0777
+        name: packetbeat-example.conf
+        items:
+        - key: packetbeat-example.conf
+          path: packetbeat-example.conf
+          mode: 0777
    - name: elasticsearch-ca
      secret:
         secretName: elasticsearch-master-certs
@@ -37,6 +45,11 @@ extraVolumes:
      emptyDir: {}
 
 extraVolumeMounts:
+   - name: packetbeat
+     mountPath: /usr/share/logstash/extra/packetbeat-example.conf
+     subPath: packetbeat-example.conf
+     readOnly: false
+     
    - name: ca-directory
      mountPath: /usr/share/logstash/certs
    - name: elasticsearch-ca
