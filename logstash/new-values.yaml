@@ -25,48 +25,7 @@ extraEnvs:
         key: username
 
 
-envFrom: 
- - configMapRef:
-     name: beats-input.conf
- - configMapRef:
-     name: packet-input.conf
- - configMapRef:
-     name: proxy-input.conf
- - configMapRef:
-     name: proxy-pack.conf
- - secretRef:
-     name: elasticsearch-master-credentials
-
-
 extraVolumes:
-   - name: beats
-     configMap:
-        defaultMode: 0777
-        name: beats-input.conf
-        items:
-        - key: beats-input.conf
-          path: beats-input.conf
-          mode: 0777
-   - name: packet
-     configMap:
-        defaultMode: 0777
-        name: packet-input.conf
-        items:
-        - key: packet-input.conf
-          path: packet-input.conf
-          mode: 0777
-   - name: proxy
-     configMap:
-        defaultMode: 0777
-        name: proxy-input.conf
-   - name: proxypack
-     configMap:
-        defaultMode: 0777
-        name: proxy-pack.conf
-        items:
-        - key: proxy-pack.conf
-          path: proxy-pack.conf
-          mode: 0777
    - name: elasticsearch-ca
      secret:
         secretName: elasticsearch-master-certs
@@ -78,22 +37,6 @@ extraVolumes:
      emptyDir: {}
 
 extraVolumeMounts:
-   - name: beats
-     mountPath: /usr/share/logstash/extra/beats-input.conf
-     subPath: beats-input.conf
-     readOnly: false
-   - name: packet
-     mountPath: /usr/share/logstash/extra/packet-input.conf
-     subPath: packet-input.conf
-     readOnly: false
-        #   - name: proxy
-        #     mountPath: /usr/share/logstash/extra/proxy-input.conf
-        #     subPath: proxy-input.conf
-        #     readOnly: false
-   - name: proxypack
-     mountPath: /usr/share/logstash/extra/proxy-pack.conf
-     subPath: proxy-pack.conf
-     readOnly: false
    - name: ca-directory
      mountPath: /usr/share/logstash/certs
    - name: elasticsearch-ca
@@ -108,9 +51,10 @@ logstashConfig:
           xpack.monitoring.elasticsearch.username: "${ELASTICSEARCH_USERNAME}"
           xpack.monitoring.elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
           xpack.monitoring.elasticsearch.ssl.certificate_authority: /usr/share/logstash/certs/ca.crt
-  pipelines.yml: |
-    - pipeline.id: extra
-      path.config: "/usr/share/logstash/extra/*.conf"
+ #####pipeline can be mounted to /usr/share/logstash/extra/ directory and be add by this config
+ # pipelines.yml: |
+ #   - pipeline.id: extra
+ #     path.config: "/usr/share/logstash/extra/*.conf"
 
 image: "docker.elastic.co/logstash/logstash"
 imageTag: "8.1.0"
@@ -282,7 +226,7 @@ ingress:
   className: "nginx"
   pathtype: ImplementationSpecific
   hosts:
-    - host: logstash.sshc.io
+    - host: logstash.example.com
       paths:
         - path: /beats
           servicePort: 5044
