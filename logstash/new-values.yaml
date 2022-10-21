@@ -158,63 +158,28 @@ terminationGracePeriod: 120
 #       - curl
 #      - localhost:9600
 
-#livenessProbe:
-#  httpGet:
-#    path: /beats
-#    port: 5044
-#  initialDelaySeconds: 300
-#  periodSeconds: 10
-#  timeoutSeconds: 5
-#  failureThreshold: 3
-#  successThreshold: 1
-#
-#readinessProbe:
-#  httpGet:
-#    path: /proxybeat
-#    port: 5077
-#  initialDelaySeconds: 60
-#  periodSeconds: 10
-#  timeoutSeconds: 5
-#  failureThreshold: 3
-#  successThreshold: 3
 service:
    type: ClusterIP
    ports:
-     - name: beats
+     - name: filebeats
        port: 5044
        protocol: TCP
        targetPort: 5044
-     - name: proxyinput
+     - name: packetbeat
        port: 5055
        protocol: TCP
        targetPort: 5055
-     - name: packet
-       port: 5066
-       protocol: TCP
-       targetPort: 5066
-     - name: proxybeats
-       port: 5077
-       protocol: TCP
-       targetPort: 5077
 service:
    type: NodePort
    ports:
-     - name: beats
+     - name: filebeats
        port: 5044
        protocol: TCP
        targetPort: 5044
-     - name: proxyinput
+     - name: packetbeat
        port: 5055
        protocol: TCP
        targetPort: 5055
-     - name: packet
-       port: 5066
-       protocol: TCP
-       targetPort: 5066
-     - name: proxybeats
-       port: 5077
-       protocol: TCP
-       targetPort: 5077
 
 
 ## Use an alternate scheduler.
@@ -228,11 +193,7 @@ ingress:
   hosts:
     - host: logstash.example.com
       paths:
-        - path: /beats
+        - path: /filebeats
           servicePort: 5044
-        - path: /proxyinput
+        - path: /packetbeat
           servicePort: 5055
-        - path: /packet
-          servicePort: 5066
-        - path: /proxybeat
-          servicePort: 5077
