@@ -65,9 +65,9 @@ logstashConfig:
           xpack.monitoring.elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
           xpack.monitoring.elasticsearch.ssl.certificate_authority: /usr/share/logstash/certs/ca.crt
  #####pipeline can be mounted to /usr/share/logstash/extra/ directory and be add by this config
- # pipelines.yml: |
- #   - pipeline.id: extra
- #     path.config: "/usr/share/logstash/extra/*.conf"
+  pipelines.yml: |
+    - pipeline.id: extra
+      path.config: "/usr/share/logstash/extra/*.conf"
 
 image: "docker.elastic.co/logstash/logstash"
 imageTag: "8.1.0"
