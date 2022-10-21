@@ -23,7 +23,7 @@ kibanaConfig:
      server.host: "0.0.0.0"
      server.shutdownTimeout: "5s"
      elasticsearch.hosts: [ "https://elasticsearch-master.elk:9200" ]
-     server.publicBaseUrl: "http://kibana.sshc.io"
+     server.publicBaseUrl: "http://kibana.example.com"
 
 resources:
   requests:
@@ -81,7 +81,7 @@ ingress:
   # kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
   hosts:
-    - host: kibana.sshc.io
+    - host: kibana.example.com
       paths:
         - path: /
 
